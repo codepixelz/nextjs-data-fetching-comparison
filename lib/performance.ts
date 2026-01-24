@@ -60,15 +60,18 @@ export function measureWebVitals(callback: (metric: MetricType, value: number) =
   // Largest Contentful Paint (LCP)
   try {
     if (typeof PerformanceObserver !== 'undefined') {
+      let lcpReported = false
       const lcpObserver = new PerformanceObserver((list) => {
         const entries = list.getEntries()
         if (entries.length > 0) {
           const lastEntry = entries[entries.length - 1] as PerformanceEntry & { renderTime?: number; loadTime?: number }
           const lcp = lastEntry.renderTime || lastEntry.loadTime || lastEntry.startTime
           callback('LCP', lcp)
+          lcpReported = true
         }
       })
-      lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] })
+      // Use buffered: true to get entries that were recorded before the observer was created
+      lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true })
 
       // LCP is finalized when page becomes hidden or after load
       const finalizeLCP = () => {
@@ -76,6 +79,22 @@ export function measureWebVitals(callback: (metric: MetricType, value: number) =
       }
       document.addEventListener('visibilitychange', finalizeLCP, { once: true })
       window.addEventListener('pagehide', finalizeLCP, { once: true })
+
+      // Also report LCP after load if not yet reported
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          if (!lcpReported) {
+            // Try to get LCP from existing entries
+            const entries = performance.getEntriesByType('largest-contentful-paint')
+            if (entries.length > 0) {
+              const lastEntry = entries[entries.length - 1] as PerformanceEntry & { renderTime?: number; loadTime?: number }
+              const lcp = lastEntry.renderTime || lastEntry.loadTime || lastEntry.startTime
+              callback('LCP', lcp)
+            }
+          }
+          lcpObserver.disconnect()
+        }, 100)
+      })
     }
   } catch (e) {
     console.warn('LCP measurement failed:', e)
@@ -124,6 +143,40 @@ export function measureWebVitals(callback: (metric: MetricType, value: number) =
     }
   } catch (e) {
     console.warn('LOAD_TIME measurement failed:', e)
+  }
+
+  // API_DURATION - track fetch requests to /api/* endpoints using Resource Timing
+  try {
+    if (typeof PerformanceObserver !== 'undefined') {
+      // Check existing resource entries first
+      const existingResources = performance.getEntriesByType('resource') as PerformanceResourceTiming[]
+      const apiCalls = existingResources.filter(entry => entry.name.includes('/api/'))
+      if (apiCalls.length > 0) {
+        // Report average API duration
+        const totalDuration = apiCalls.reduce((sum, entry) => sum + entry.duration, 0)
+        callback('API_DURATION', totalDuration / apiCalls.length)
+      }
+
+      // Observe future resource loads
+      const resourceObserver = new PerformanceObserver((list) => {
+        const entries = list.getEntries() as PerformanceResourceTiming[]
+        const apiEntries = entries.filter(entry => entry.name.includes('/api/'))
+
+        for (const entry of apiEntries) {
+          callback('API_DURATION', entry.duration)
+        }
+      })
+      resourceObserver.observe({ type: 'resource', buffered: false })
+
+      // Disconnect after page load + a delay to capture initial API calls
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          resourceObserver.disconnect()
+        }, 5000)
+      })
+    }
+  } catch (e) {
+    console.warn('API_DURATION measurement failed:', e)
   }
 }
 

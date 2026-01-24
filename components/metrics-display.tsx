@@ -5,107 +5,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { ApproachType, MetricType } from '@/types'
 import { measureWebVitals, recordMetric } from '@/lib/performance'
-
-interface MetricValue {
-  current: number | null
-  avg: number | null
-  min: number | null
-  max: number | null
-  count: number
-}
-
-interface MetricsState {
-  TTFB: MetricValue
-  FCP: MetricValue
-  LCP: MetricValue
-  TTI: MetricValue
-  LOAD_TIME: MetricValue
-  API_DURATION: MetricValue
-}
-
-const initialMetricValue: MetricValue = {
-  current: null,
-  avg: null,
-  min: null,
-  max: null,
-  count: 0,
-}
-
-const initialMetrics: MetricsState = {
-  TTFB: { ...initialMetricValue },
-  FCP: { ...initialMetricValue },
-  LCP: { ...initialMetricValue },
-  TTI: { ...initialMetricValue },
-  LOAD_TIME: { ...initialMetricValue },
-  API_DURATION: { ...initialMetricValue },
-}
-
-const metricLabels: Record<MetricType, { name: string; description: string; unit: string }> = {
-  TTFB: { name: 'Time to First Byte', description: 'Server response time', unit: 'ms' },
-  FCP: { name: 'First Contentful Paint', description: 'First content visible', unit: 'ms' },
-  LCP: { name: 'Largest Contentful Paint', description: 'Main content visible', unit: 'ms' },
-  TTI: { name: 'Time to Interactive', description: 'Page fully interactive', unit: 'ms' },
-  LOAD_TIME: { name: 'Total Load Time', description: 'Full page load', unit: 'ms' },
-  API_DURATION: { name: 'API Duration', description: 'Data fetch time', unit: 'ms' },
-}
-
-function getMetricColor(metric: MetricType, value: number): string {
-  const thresholds: Record<MetricType, { good: number; moderate: number }> = {
-    TTFB: { good: 200, moderate: 500 },
-    FCP: { good: 1800, moderate: 3000 },
-    LCP: { good: 2500, moderate: 4000 },
-    TTI: { good: 3800, moderate: 7300 },
-    LOAD_TIME: { good: 2000, moderate: 4000 },
-    API_DURATION: { good: 300, moderate: 800 },
-  }
-
-  const t = thresholds[metric]
-  if (value <= t.good) return 'text-green-500'
-  if (value <= t.moderate) return 'text-yellow-500'
-  return 'text-red-500'
-}
+import { useMetricsStore, metricDescriptions, getMetricColor } from '@/lib/stores/metrics-store'
+import { APPROACH_CONFIG } from '@/lib/cache-config'
+import { Info } from 'lucide-react'
 
 interface MetricsDisplayProps {
   approach: ApproachType
   showAllMetrics?: boolean
+  showComparison?: boolean
   className?: string
 }
 
-export function MetricsDisplay({ approach, showAllMetrics = true, className = '' }: MetricsDisplayProps) {
-  const [metrics, setMetrics] = useState<MetricsState>(initialMetrics)
+export function MetricsDisplay({
+  approach,
+  showAllMetrics = true,
+  showComparison = true,
+  className = ''
+}: MetricsDisplayProps) {
+  const { metrics, updateMetric, resetApproach, getComparisonData } = useMetricsStore()
   const [isCollecting, setIsCollecting] = useState(true)
-  const [historicalData, setHistoricalData] = useState<MetricsState | null>(null)
+  const [mounted, setMounted] = useState(false)
 
-  const updateMetric = useCallback((metric: MetricType, value: number) => {
-    setMetrics(prev => {
-      const current = prev[metric]
-      const newCount = current.count + 1
-      const newAvg = current.avg !== null
-        ? (current.avg * current.count + value) / newCount
-        : value
-      const newMin = current.min !== null ? Math.min(current.min, value) : value
-      const newMax = current.max !== null ? Math.max(current.max, value) : value
-
-      return {
-        ...prev,
-        [metric]: {
-          current: value,
-          avg: newAvg,
-          min: newMin,
-          max: newMax,
-          count: newCount,
-        },
-      }
-    })
-
+  const handleMetricUpdate = useCallback((metric: MetricType, value: number) => {
+    updateMetric(approach, metric, value)
     recordMetric(approach, metric, value)
-  }, [approach])
+  }, [approach, updateMetric])
 
   useEffect(() => {
+    setMounted(true)
     measureWebVitals((metric, value) => {
-      updateMetric(metric, value)
+      handleMetricUpdate(metric, value)
     })
 
     const timer = setTimeout(() => {
@@ -113,47 +45,39 @@ export function MetricsDisplay({ approach, showAllMetrics = true, className = ''
     }, 5000)
 
     return () => clearTimeout(timer)
-  }, [updateMetric])
-
-  useEffect(() => {
-    fetch(`/api/metrics?approach=${approach}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.data && data.data.length > 0) {
-          const aggregated: MetricsState = { ...initialMetrics }
-          const metricTypes: MetricType[] = ['TTFB', 'FCP', 'LCP', 'TTI', 'LOAD_TIME', 'API_DURATION']
-
-          metricTypes.forEach(type => {
-            const values = data.data
-              .filter((m: { metric: MetricType }) => m.metric === type)
-              .map((m: { value: number }) => m.value)
-
-            if (values.length > 0) {
-              aggregated[type] = {
-                current: values[values.length - 1],
-                avg: values.reduce((a: number, b: number) => a + b, 0) / values.length,
-                min: Math.min(...values),
-                max: Math.max(...values),
-                count: values.length,
-              }
-            }
-          })
-
-          setHistoricalData(aggregated)
-        }
-      })
-      .catch(console.error)
-  }, [approach])
+  }, [handleMetricUpdate])
 
   const displayMetrics: MetricType[] = showAllMetrics
     ? ['TTFB', 'FCP', 'LCP', 'TTI', 'LOAD_TIME', 'API_DURATION']
     : ['FCP', 'LCP', 'LOAD_TIME']
 
-  const resetMetrics = async () => {
-    setMetrics(initialMetrics)
-    setHistoricalData(null)
-    await fetch('/api/metrics', { method: 'DELETE' })
+  const handleReset = () => {
+    resetApproach(approach)
     window.location.reload()
+  }
+
+  const currentMetrics = metrics[approach]
+
+  // Don't render with store data until mounted (avoid hydration mismatch)
+  if (!mounted) {
+    return (
+      <Card className={className}>
+        <CardHeader>
+          <CardTitle>Performance Metrics</CardTitle>
+          <CardDescription>Loading metrics...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {displayMetrics.map(metric => (
+              <div key={metric} className="p-3 border rounded-lg">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-8 w-20" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -170,10 +94,10 @@ export function MetricsDisplay({ approach, showAllMetrics = true, className = ''
               )}
             </CardTitle>
             <CardDescription>
-              Real-time Web Vitals and loading performance
+              Real-time Web Vitals • Data persists across page reloads
             </CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={resetMetrics}>
+          <Button variant="outline" size="sm" onClick={handleReset}>
             Reset
           </Button>
         </div>
@@ -181,32 +105,98 @@ export function MetricsDisplay({ approach, showAllMetrics = true, className = ''
       <CardContent>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {displayMetrics.map(metric => {
-            const data = metrics[metric]
-            const historical = historicalData?.[metric]
-            const info = metricLabels[metric]
+            const data = currentMetrics[metric]
+            const info = metricDescriptions[metric]
+            const comparison = showComparison ? getComparisonData(metric) : []
+            const otherApproaches = comparison.filter(c => c.approach !== approach && c.value !== null && c.count > 0)
 
             return (
               <div key={metric} className="p-3 border rounded-lg">
-                <div className="text-xs text-muted-foreground mb-1">{info.name}</div>
+                <div className="flex items-center gap-1 mb-1">
+                  <span className="text-xs text-muted-foreground">{info.name}</span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button className="text-muted-foreground/50 hover:text-muted-foreground">
+                        <Info className="w-3 h-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs p-3">
+                      <div className="space-y-2">
+                        <p className="font-medium">{info.name}</p>
+                        <p className="text-xs">{info.description}</p>
+                        <div className="flex gap-3 text-xs pt-1 border-t border-border/50">
+                          <span className="text-green-500">Good: {info.good}</span>
+                          <span className="text-yellow-500">Moderate: {info.moderate}</span>
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+
                 {data.current !== null ? (
-                  <div className={`text-2xl font-bold ${getMetricColor(metric, data.current)}`}>
-                    {Math.round(data.current)}
-                    <span className="text-sm font-normal text-muted-foreground ml-1">{info.unit}</span>
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className={`text-2xl font-bold cursor-help ${getMetricColor(metric, data.current)}`}>
+                        {Math.round(data.current)}
+                        <span className="text-sm font-normal text-muted-foreground ml-1">{info.unit}</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="p-3">
+                      <div className="space-y-1 text-xs">
+                        <div>Current: <span className="font-medium">{Math.round(data.current)}ms</span></div>
+                        {data.avg !== null && <div>Average: <span className="font-medium">{Math.round(data.avg)}ms</span></div>}
+                        {data.min !== null && <div>Min: <span className="font-medium">{Math.round(data.min)}ms</span></div>}
+                        {data.max !== null && <div>Max: <span className="font-medium">{Math.round(data.max)}ms</span></div>}
+                        <div>Samples: <span className="font-medium">{data.count}</span></div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
                 ) : (
                   <Skeleton className="h-8 w-20" />
                 )}
-                {(data.count > 1 || historical) && (
+
+                {data.count > 0 && (
                   <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                    {data.avg !== null && (
-                      <div>Avg: {Math.round(data.avg)}{info.unit}</div>
-                    )}
-                    {historical && historical.count > 0 && (
-                      <div className="text-muted-foreground/70">
-                        Historical: {Math.round(historical.avg || 0)}{info.unit} ({historical.count} samples)
-                      </div>
+                    {data.avg !== null && data.count > 1 && (
+                      <div>Avg: {Math.round(data.avg)}{info.unit} ({data.count})</div>
                     )}
                   </div>
+                )}
+
+                {/* Comparison with other approaches */}
+                {showComparison && otherApproaches.length > 0 && data.avg !== null && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="mt-2 pt-2 border-t border-border/50 text-xs text-muted-foreground/70 cursor-help">
+                        vs others: {otherApproaches.length} approaches
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="p-3 max-w-sm">
+                      <div className="space-y-2">
+                        <p className="font-medium text-xs">Comparison ({metric})</p>
+                        <div className="space-y-1">
+                          {/* Current approach first */}
+                          <div className="flex justify-between text-xs">
+                            <span className="font-medium">{APPROACH_CONFIG[approach]?.name || approach}</span>
+                            <span className={getMetricColor(metric, data.avg || 0)}>
+                              {Math.round(data.avg || 0)}ms
+                            </span>
+                          </div>
+                          {/* Other approaches */}
+                          {otherApproaches
+                            .sort((a, b) => (a.value || 0) - (b.value || 0))
+                            .map(item => (
+                              <div key={item.approach} className="flex justify-between text-xs text-muted-foreground">
+                                <span>{APPROACH_CONFIG[item.approach]?.name || item.approach}</span>
+                                <span className={getMetricColor(metric, item.value || 0)}>
+                                  {Math.round(item.value || 0)}ms
+                                </span>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
                 )}
               </div>
             )
@@ -232,45 +222,66 @@ export function MetricsDisplay({ approach, showAllMetrics = true, className = ''
 }
 
 export function MetricsCompact({ approach }: { approach: ApproachType }) {
-  const [metrics, setMetrics] = useState<Pick<MetricsState, 'FCP' | 'LCP'>>({
-    FCP: { ...initialMetricValue },
-    LCP: { ...initialMetricValue },
-  })
+  const { metrics, updateMetric } = useMetricsStore()
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     measureWebVitals((metric, value) => {
       if (metric === 'FCP' || metric === 'LCP') {
-        setMetrics(prev => ({
-          ...prev,
-          [metric]: { ...prev[metric], current: value },
-        }))
+        updateMetric(approach, metric, value)
         recordMetric(approach, metric, value)
       }
     })
-  }, [approach])
+  }, [approach, updateMetric])
+
+  if (!mounted) {
+    return (
+      <div className="flex gap-4 text-sm">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-4 w-16" />
+      </div>
+    )
+  }
+
+  const currentMetrics = metrics[approach]
 
   return (
     <div className="flex gap-4 text-sm">
-      <div>
-        <span className="text-muted-foreground">FCP: </span>
-        {metrics.FCP.current !== null ? (
-          <span className={getMetricColor('FCP', metrics.FCP.current)}>
-            {Math.round(metrics.FCP.current)}ms
-          </span>
-        ) : (
-          <span className="text-muted-foreground">--</span>
-        )}
-      </div>
-      <div>
-        <span className="text-muted-foreground">LCP: </span>
-        {metrics.LCP.current !== null ? (
-          <span className={getMetricColor('LCP', metrics.LCP.current)}>
-            {Math.round(metrics.LCP.current)}ms
-          </span>
-        ) : (
-          <span className="text-muted-foreground">--</span>
-        )}
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="cursor-help">
+            <span className="text-muted-foreground">FCP: </span>
+            {currentMetrics.FCP.current !== null ? (
+              <span className={getMetricColor('FCP', currentMetrics.FCP.current)}>
+                {Math.round(currentMetrics.FCP.current)}ms
+              </span>
+            ) : (
+              <span className="text-muted-foreground">--</span>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs">{metricDescriptions.FCP.description}</p>
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="cursor-help">
+            <span className="text-muted-foreground">LCP: </span>
+            {currentMetrics.LCP.current !== null ? (
+              <span className={getMetricColor('LCP', currentMetrics.LCP.current)}>
+                {Math.round(currentMetrics.LCP.current)}ms
+              </span>
+            ) : (
+              <span className="text-muted-foreground">--</span>
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs">{metricDescriptions.LCP.description}</p>
+        </TooltipContent>
+      </Tooltip>
     </div>
   )
 }
