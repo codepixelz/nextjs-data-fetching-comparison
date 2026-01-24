@@ -1,27 +1,21 @@
-import { User, ApiResponse } from '@/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { MOCK_USERS } from '@/lib/mock-data'
 
 /**
  * Async Server Component - User Profile
  *
- * Fetches user data on the server
+ * Uses direct data import to avoid localhost fetch issues during SSR.
+ * In production, you would use a database query or external API.
  */
 export async function UserProfile({ userId }: { userId: string }) {
-  // Server-side fetch with Next.js Data Cache
-  const response = await fetch(`http://localhost:3000/api/users/${userId}`, {
-    next: {
-      revalidate: 120, // Revalidate every 2 minutes
-      tags: ['users', `user-${userId}`], // Multiple tags for fine-grained control
-    },
-  })
+  // Simulate server-side data access
+  // In production, this would be a database query or external API call
+  const user = MOCK_USERS.find(u => u.id === userId)
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch user')
+  if (!user) {
+    throw new Error('User not found')
   }
-
-  const data: ApiResponse<User> = await response.json()
-  const user = data.data
 
   return (
     <div>

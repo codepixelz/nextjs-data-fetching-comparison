@@ -1,27 +1,17 @@
-import { Product, ApiResponse } from '@/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { MOCK_PRODUCTS } from '@/lib/mock-data'
 
 /**
  * Async Server Component - Product List
  *
- * Fetches data on the server with Next.js caching
+ * Uses direct data import to avoid localhost fetch issues during SSR.
+ * In production, you would use a database query or external API.
  */
 export async function ProductList() {
-  // Server-side fetch with Next.js Data Cache
-  const response = await fetch('http://localhost:3000/api/products', {
-    next: {
-      revalidate: 60, // Revalidate every 60 seconds
-      tags: ['products'], // Cache tag for granular invalidation
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch products')
-  }
-
-  const data: ApiResponse<Product[]> = await response.json()
-  const products = data.data
+  // Simulate server-side data access
+  // In production, this would be a database query or external API call
+  const products = MOCK_PRODUCTS
 
   return (
     <div>

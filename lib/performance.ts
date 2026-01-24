@@ -23,37 +23,108 @@ export function measureWebVitals(callback: (metric: MetricType, value: number) =
   if (typeof window === 'undefined') return
 
   // Time to First Byte (TTFB)
-  const navigationEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
-  if (navigationEntry) {
-    const ttfb = navigationEntry.responseStart - navigationEntry.requestStart
-    callback('TTFB', ttfb)
-  }
-
-  // First Contentful Paint (FCP)
-  const paintObserver = new PerformanceObserver((list) => {
-    for (const entry of list.getEntries()) {
-      if (entry.name === 'first-contentful-paint') {
-        callback('FCP', entry.startTime)
-        paintObserver.disconnect()
+  try {
+    const navigationEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
+    if (navigationEntry) {
+      const ttfb = navigationEntry.responseStart - navigationEntry.requestStart
+      if (ttfb > 0) {
+        callback('TTFB', ttfb)
       }
     }
-  })
-  paintObserver.observe({ entryTypes: ['paint'] })
+  } catch (e) {
+    console.warn('TTFB measurement failed:', e)
+  }
+
+  // First Contentful Paint (FCP) - check existing entries first
+  try {
+    const existingPaintEntries = performance.getEntriesByType('paint')
+    const fcpEntry = existingPaintEntries.find(entry => entry.name === 'first-contentful-paint')
+    if (fcpEntry) {
+      callback('FCP', fcpEntry.startTime)
+    } else if (typeof PerformanceObserver !== 'undefined') {
+      // Observe for future paint events
+      const paintObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          if (entry.name === 'first-contentful-paint') {
+            callback('FCP', entry.startTime)
+            paintObserver.disconnect()
+          }
+        }
+      })
+      paintObserver.observe({ entryTypes: ['paint'] })
+    }
+  } catch (e) {
+    console.warn('FCP measurement failed:', e)
+  }
 
   // Largest Contentful Paint (LCP)
-  const lcpObserver = new PerformanceObserver((list) => {
-    const entries = list.getEntries()
-    const lastEntry = entries[entries.length - 1] as PerformanceEntry & { renderTime?: number; loadTime?: number }
-    const lcp = lastEntry.renderTime || lastEntry.loadTime || lastEntry.startTime
-    callback('LCP', lcp)
-  })
-  lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] })
+  try {
+    if (typeof PerformanceObserver !== 'undefined') {
+      const lcpObserver = new PerformanceObserver((list) => {
+        const entries = list.getEntries()
+        if (entries.length > 0) {
+          const lastEntry = entries[entries.length - 1] as PerformanceEntry & { renderTime?: number; loadTime?: number }
+          const lcp = lastEntry.renderTime || lastEntry.loadTime || lastEntry.startTime
+          callback('LCP', lcp)
+        }
+      })
+      lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] })
+
+      // LCP is finalized when page becomes hidden or after load
+      const finalizeLCP = () => {
+        lcpObserver.disconnect()
+      }
+      document.addEventListener('visibilitychange', finalizeLCP, { once: true })
+      window.addEventListener('pagehide', finalizeLCP, { once: true })
+    }
+  } catch (e) {
+    console.warn('LCP measurement failed:', e)
+  }
 
   // Time to Interactive (TTI) - approximate using load event
-  window.addEventListener('load', () => {
-    const tti = performance.now()
-    callback('TTI', tti)
-  })
+  try {
+    if (document.readyState === 'complete') {
+      // Page already loaded
+      const navigationEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
+      if (navigationEntry && navigationEntry.loadEventEnd > 0) {
+        callback('TTI', navigationEntry.loadEventEnd)
+      } else {
+        callback('TTI', performance.now())
+      }
+    } else {
+      window.addEventListener('load', () => {
+        // Give a small delay to ensure JS execution is complete
+        setTimeout(() => {
+          callback('TTI', performance.now())
+        }, 0)
+      })
+    }
+  } catch (e) {
+    console.warn('TTI measurement failed:', e)
+  }
+
+  // LOAD_TIME - measure total page load
+  try {
+    if (document.readyState === 'complete') {
+      const navigationEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
+      if (navigationEntry && navigationEntry.loadEventEnd > 0) {
+        callback('LOAD_TIME', navigationEntry.loadEventEnd - navigationEntry.startTime)
+      }
+    } else {
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          const navigationEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
+          if (navigationEntry && navigationEntry.loadEventEnd > 0) {
+            callback('LOAD_TIME', navigationEntry.loadEventEnd - navigationEntry.startTime)
+          } else {
+            callback('LOAD_TIME', performance.now())
+          }
+        }, 0)
+      })
+    }
+  } catch (e) {
+    console.warn('LOAD_TIME measurement failed:', e)
+  }
 }
 
 /**

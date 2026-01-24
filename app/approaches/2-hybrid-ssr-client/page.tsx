@@ -1,9 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Product, ApiResponse } from '@/types'
 import { ServerProducts } from './components/server-data'
 import { ClientInteractive } from './components/client-data'
 import { MetricsDisplay } from '@/components/metrics-display'
+import { MOCK_PRODUCTS } from '@/lib/mock-data'
 
 /**
  * Approach 2: Hybrid SSR + Client
@@ -17,13 +17,9 @@ import { MetricsDisplay } from '@/components/metrics-display'
  * - Cache boundaries between server/client
  */
 export default async function HybridSSRClientPage() {
-  // Server-side data fetching
-  const response = await fetch('http://localhost:3000/api/products', {
-    cache: 'no-store', // No cache for demo purposes
-  })
-
-  const data: ApiResponse<Product[]> = await response.json()
-  const products = data.data
+  // Server-side data - using direct import to avoid localhost fetch issues
+  // In production, you would use a database query or external API
+  const products = MOCK_PRODUCTS
 
   return (
     <div className="container mx-auto p-6">
