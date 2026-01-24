@@ -82,15 +82,9 @@ const approaches = [
 export default function DocsPage() {
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto p-6 py-12 max-w-7xl">
+      <div className="container mx-auto p-6 py-8 max-w-7xl">
         {/* Header */}
-        <div className="mb-12">
-          <Link
-            href="/"
-            className="text-sm text-muted-foreground hover:text-foreground mb-4 inline-block"
-          >
-            ← Back to Home
-          </Link>
+        <div className="mb-8">
           <h1 className="text-4xl font-bold mb-4">Documentation & Guides</h1>
           <p className="text-xl text-muted-foreground max-w-3xl">
             Everything you need to understand data fetching patterns in Next.js
@@ -98,25 +92,26 @@ export default function DocsPage() {
           </p>
         </div>
 
-        {/* Quick Navigation */}
-        <div className="flex gap-2 flex-wrap mb-12">
-          <Button variant="outline" asChild>
+        {/* Quick Navigation - On Page */}
+        <div className="flex gap-2 flex-wrap mb-8 p-4 bg-muted/30 rounded-lg">
+          <span className="text-sm text-muted-foreground self-center mr-2">Jump to:</span>
+          <Button variant="ghost" size="sm" asChild>
             <a href="#official-docs">Official Docs</a>
           </Button>
-          <Button variant="outline" asChild>
-            <a href="#comparison">Comparison Table</a>
+          <Button variant="ghost" size="sm" asChild>
+            <a href="#comparison">Comparison</a>
           </Button>
-          <Button variant="outline" asChild>
-            <a href="#seo-guide">SEO & Crawlers</a>
+          <Button variant="ghost" size="sm" asChild>
+            <a href="#seo-guide">SEO</a>
           </Button>
-          <Button variant="outline" asChild>
-            <a href="#cache-guide">Cache Strategy Guide</a>
+          <Button variant="ghost" size="sm" asChild>
+            <a href="#cache-guide">Cache</a>
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="ghost" size="sm" asChild>
             <a href="#decision-tree">Decision Tree</a>
           </Button>
-          <Button variant="outline" asChild>
-            <a href="#metrics">Performance Metrics</a>
+          <Button variant="ghost" size="sm" asChild>
+            <a href="#metrics">Metrics</a>
           </Button>
         </div>
 
@@ -1324,14 +1319,6 @@ const queryClient = new QueryClient({
           </div>
         </section>
 
-        {/* Footer */}
-        <div className="text-center text-sm text-muted-foreground pt-8 border-t">
-          <p>
-            <Link href="/" className="text-primary hover:underline">
-              ← Back to Home
-            </Link>
-          </p>
-        </div>
       </div>
     </div>
   );

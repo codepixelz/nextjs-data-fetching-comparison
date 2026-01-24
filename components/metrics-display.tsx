@@ -142,12 +142,33 @@ export function MetricsDisplay({
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="p-3">
-                      <div className="space-y-1 text-xs">
-                        <div>Current: <span className="font-medium">{Math.round(data.current)}ms</span></div>
-                        {data.avg !== null && <div>Average: <span className="font-medium">{Math.round(data.avg)}ms</span></div>}
-                        {data.min !== null && <div>Min: <span className="font-medium">{Math.round(data.min)}ms</span></div>}
-                        {data.max !== null && <div>Max: <span className="font-medium">{Math.round(data.max)}ms</span></div>}
-                        <div>Samples: <span className="font-medium">{data.count}</span></div>
+                      <div className="space-y-1.5 text-xs min-w-[120px]">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Current:</span>
+                          <span className="font-medium">{Math.round(data.current)}ms</span>
+                        </div>
+                        {data.avg !== null && (
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Average:</span>
+                            <span className="font-medium">{Math.round(data.avg)}ms</span>
+                          </div>
+                        )}
+                        {data.min !== null && (
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Min:</span>
+                            <span className="font-medium">{Math.round(data.min)}ms</span>
+                          </div>
+                        )}
+                        {data.max !== null && (
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Max:</span>
+                            <span className="font-medium">{Math.round(data.max)}ms</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between gap-4 pt-1 border-t border-border/50">
+                          <span className="text-muted-foreground">Samples:</span>
+                          <span className="font-medium">{data.count}</span>
+                        </div>
                       </div>
                     </TooltipContent>
                   </Tooltip>
