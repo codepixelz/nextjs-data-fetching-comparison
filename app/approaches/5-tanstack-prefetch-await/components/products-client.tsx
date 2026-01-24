@@ -1,6 +1,6 @@
 'use client'
 
-import { useProducts } from '@/hooks/use-products'
+import { useSuspenseProducts } from '@/hooks/use-products'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { MetricsDisplay } from '@/components/metrics-display'
 export default function ProductsClient() {
   // useSuspenseQuery returns data that's NEVER undefined
   // No isLoading or error - those are handled by Suspense and Error Boundaries
-  const { data: products, refetch, dataUpdatedAt } = useProducts()
+  const { data: products, refetch, dataUpdatedAt } = useSuspenseProducts()
 
   return (
     <div className="container mx-auto p-6">
@@ -201,12 +201,12 @@ export default async function Page() {
 // components/products-client.tsx (Client Component)
 'use client'
 
-import { useProducts } from '@/hooks/use-products'
+import { useSuspenseProducts } from '@/hooks/use-products'
 
 export default function ProductsClient() {
   // useSuspenseQuery returns data that's NEVER undefined
   // No isLoading or error - data is guaranteed to be ready
-  const { data: products } = useProducts()
+  const { data: products } = useSuspenseProducts()
 
   // Can directly use products - no null checks needed!
   return <ProductGrid products={products} />
@@ -215,7 +215,7 @@ export default function ProductsClient() {
 // hooks/use-products.ts
 import { useSuspenseQuery } from '@tanstack/react-query'
 
-export function useProducts() {
+export function useSuspenseProducts() {
   return useSuspenseQuery({
     queryKey: ['products'],
     queryFn: fetchProducts,

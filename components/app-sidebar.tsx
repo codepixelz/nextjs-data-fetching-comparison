@@ -27,6 +27,7 @@ import {
   Settings,
   ExternalLink,
   Github,
+  Activity,
 } from 'lucide-react'
 import { APPROACH_CONFIG } from '@/lib/cache-config'
 
@@ -50,6 +51,7 @@ const approaches = [
 
 const docsNavigation = [
   { label: 'Official Docs', href: '/docs#official-docs', icon: <ExternalLink className="w-4 h-4" /> },
+  { label: 'Request Waterfalls', href: '/docs#waterfalls', icon: <Activity className="w-4 h-4" /> },
   { label: 'Comparison Table', href: '/docs#comparison', icon: <BarChart3 className="w-4 h-4" /> },
   { label: 'SEO & Crawlers', href: '/docs#seo-guide', icon: <FileText className="w-4 h-4" /> },
   { label: 'Cache Strategy', href: '/docs#cache-guide', icon: <Database className="w-4 h-4" /> },

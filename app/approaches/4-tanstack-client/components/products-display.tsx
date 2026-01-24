@@ -1,6 +1,6 @@
 'use client'
 
-import { useProducts } from '@/hooks/use-products'
+import { useSuspenseProducts } from '@/hooks/use-products'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
@@ -18,7 +18,7 @@ interface ProductsDisplayProps {
  */
 export default function ProductsDisplay({ delay }: ProductsDisplayProps) {
   // useSuspenseQuery returns data that's NEVER undefined
-  const { data: products } = useProducts(delay)
+  const { data: products } = useSuspenseProducts(delay)
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

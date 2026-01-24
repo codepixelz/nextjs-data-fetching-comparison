@@ -63,7 +63,7 @@ async function updateProduct(id: string, updates: Partial<Product>): Promise<Pro
  * - More declarative - Suspense boundary shows loading intent
  * - Simpler component code - no if (isLoading) checks
  */
-export function useProducts(delay?: number) {
+export function useSuspenseProducts(delay?: number) {
   return useSuspenseQuery({
     queryKey: ['products', delay],
     queryFn: () => fetchProducts(delay),
@@ -74,7 +74,7 @@ export function useProducts(delay?: number) {
 /**
  * Hook to fetch a single product using Suspense
  */
-export function useProduct(id: string, delay?: number) {
+export function useSuspenseProduct(id: string, delay?: number) {
   return useSuspenseQuery({
     queryKey: ['products', id, delay],
     queryFn: () => fetchProduct(id, delay),

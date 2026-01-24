@@ -184,12 +184,12 @@ export default function TanStackClientPage() {
 // ProductsDisplay Component
 'use client'
 
-import { useProducts } from '@/hooks/use-products'
+import { useSuspenseProducts } from '@/hooks/use-products'
 
 export default function ProductsDisplay() {
   // No isLoading or error! Suspense handles it
   // data is never undefined - TypeScript knows this
-  const { data: products } = useProducts()
+  const { data: products } = useSuspenseProducts()
 
   return <ProductGrid products={products} />
 }
@@ -197,7 +197,7 @@ export default function ProductsDisplay() {
 // hooks/use-products.ts
 import { useSuspenseQuery } from '@tanstack/react-query'
 
-export function useProducts() {
+export function useSuspenseProducts() {
   return useSuspenseQuery({
     queryKey: ['products'],
     queryFn: () => fetchProducts(),

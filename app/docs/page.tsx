@@ -99,6 +99,9 @@ export default function DocsPage() {
             <a href="#official-docs">Official Docs</a>
           </Button>
           <Button variant="ghost" size="sm" asChild>
+            <a href="#waterfalls">Waterfalls</a>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
             <a href="#comparison">Comparison</a>
           </Button>
           <Button variant="ghost" size="sm" asChild>
@@ -266,6 +269,32 @@ export default function DocsPage() {
                     </div>
                     <div className="text-muted-foreground text-xs">
                       Mutations & revalidation
+                    </div>
+                  </a>
+                  <a
+                    href="https://nextjs.org/docs/app/building-your-application/data-fetching/fetching#parallel-and-sequential-data-fetching"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block p-2 rounded hover:bg-muted transition-colors border-l-2 border-yellow-500"
+                  >
+                    <div className="font-medium text-primary hover:underline">
+                      Parallel & Sequential Fetching
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      Avoiding request waterfalls
+                    </div>
+                  </a>
+                  <a
+                    href="https://nextjs.org/learn/dashboard-app/fetching-data"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block p-2 rounded hover:bg-muted transition-colors border-l-2 border-yellow-500"
+                  >
+                    <div className="font-medium text-primary hover:underline">
+                      Fetching Data Tutorial
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      Learn about waterfalls & Promise.all
                     </div>
                   </a>
                 </div>
@@ -476,6 +505,45 @@ export default function DocsPage() {
                       Using Suspense with TanStack Query
                     </div>
                   </a>
+                  <a
+                    href="https://tanstack.com/query/latest/docs/framework/react/guides/request-waterfalls"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block p-2 rounded hover:bg-muted transition-colors border-l-2 border-yellow-500"
+                  >
+                    <div className="font-medium text-primary hover:underline">
+                      Request Waterfalls
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      Performance & avoiding waterfalls
+                    </div>
+                  </a>
+                  <a
+                    href="https://tanstack.com/query/latest/docs/framework/react/guides/parallel-queries"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block p-2 rounded hover:bg-muted transition-colors border-l-2 border-yellow-500"
+                  >
+                    <div className="font-medium text-primary hover:underline">
+                      Parallel Queries
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      Execute queries in parallel
+                    </div>
+                  </a>
+                  <a
+                    href="https://tanstack.com/query/latest/docs/framework/react/guides/dependent-queries"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block p-2 rounded hover:bg-muted transition-colors border-l-2 border-yellow-500"
+                  >
+                    <div className="font-medium text-primary hover:underline">
+                      Dependent Queries
+                    </div>
+                    <div className="text-muted-foreground text-xs">
+                      Handling query dependencies
+                    </div>
+                  </a>
                 </div>
               </CardContent>
             </Card>
@@ -546,6 +614,425 @@ export default function DocsPage() {
               </div>
             </CardContent>
           </Card>
+        </section>
+
+        {/* Request Waterfalls */}
+        <section id="waterfalls" className="mb-16">
+          <h2 className="text-3xl font-bold mb-6">Request Waterfalls</h2>
+          <p className="text-muted-foreground mb-6">
+            Understanding and avoiding request waterfalls is critical for
+            performance. A waterfall occurs when requests are made sequentially
+            instead of in parallel.
+          </p>
+
+          <div className="grid gap-6">
+            {/* What is a Waterfall */}
+            <Card>
+              <CardHeader>
+                <CardTitle>What is a Request Waterfall?</CardTitle>
+                <CardDescription>
+                  The biggest performance footgun in data fetching
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  A request waterfall happens when a request for a resource
+                  (code, CSS, images, data) does not start until after another
+                  request has finished. This is especially problematic in React
+                  applications where components fetch their own data.
+                </p>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="p-4 border rounded-lg bg-destructive/5 border-destructive/30">
+                    <h4 className="font-semibold text-destructive mb-2">
+                      Waterfall (Bad)
+                    </h4>
+                    <div className="font-mono text-xs space-y-1 text-muted-foreground">
+                      <div>Request A: ████████ (500ms)</div>
+                      <div>
+                        Request B: {"        "}████████ (500ms)
+                      </div>
+                      <div>
+                        Request C: {"                "}████████ (500ms)
+                      </div>
+                      <div className="pt-2 text-destructive font-semibold">
+                        Total: 1500ms
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 border rounded-lg bg-green-500/5 border-green-500/30">
+                    <h4 className="font-semibold text-green-500 mb-2">
+                      Parallel (Good)
+                    </h4>
+                    <div className="font-mono text-xs space-y-1 text-muted-foreground">
+                      <div>Request A: ████████ (500ms)</div>
+                      <div>Request B: ████████ (500ms)</div>
+                      <div>Request C: ████████ (500ms)</div>
+                      <div className="pt-2 text-green-500 font-semibold">
+                        Total: 500ms
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Data Fetching Patterns */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Data Fetching Patterns</CardTitle>
+                <CardDescription>
+                  Three patterns for fetching data in React
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <Badge variant="outline" className="mb-2">
+                      Fetch-on-Render
+                    </Badge>
+                    <h4 className="font-semibold mb-2">Component Fetching</h4>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Components initiate fetches when they render. Common with
+                      useEffect or useQuery. Can cause waterfalls when nested.
+                    </p>
+                    <Badge variant="destructive">Waterfall Risk</Badge>
+                  </div>
+
+                  <div className="p-4 border rounded-lg">
+                    <Badge variant="outline" className="mb-2">
+                      Fetch-Then-Render
+                    </Badge>
+                    <h4 className="font-semibold mb-2">Wait for All</h4>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Fetch all data before rendering. Prevents waterfalls but
+                      blocks the entire UI until all data is ready.
+                    </p>
+                    <Badge variant="secondary">No Waterfalls</Badge>
+                  </div>
+
+                  <div className="p-4 border rounded-lg border-green-500/50 bg-green-500/5">
+                    <Badge className="mb-2 bg-green-500">Recommended</Badge>
+                    <h4 className="font-semibold mb-2">Render-as-You-Fetch</h4>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Start fetches early (route loader, server component), then
+                      render. Suspense shows fallbacks while data loads.
+                    </p>
+                    <Badge variant="secondary">Best Performance</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Solutions */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Solutions for Avoiding Waterfalls</CardTitle>
+                <CardDescription>
+                  Strategies from official documentation
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-4">
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-semibold mb-2">
+                      1. Use Promise.all() for Parallel Fetching
+                    </h4>
+                    <div className="bg-muted p-3 rounded text-sm font-mono">
+                      <pre>{`// Instead of sequential awaits
+const user = await getUser()
+const posts = await getPosts()
+
+// Use Promise.all for parallel execution
+const [user, posts] = await Promise.all([
+  getUser(),
+  getPosts()
+])`}</pre>
+                    </div>
+                  </div>
+
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-semibold mb-2">
+                      2. Prefetch at Route Level
+                    </h4>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      In Next.js, initiate data fetching in Server Components
+                      before rendering client components. With TanStack Query,
+                      prefetch in route loaders or server components.
+                    </p>
+                    <div className="bg-muted p-3 rounded text-sm font-mono">
+                      <pre>{`// Server Component prefetching
+async function Page() {
+  // These run in parallel on the server
+  const userPromise = getUser()
+  const postsPromise = getPosts()
+
+  return (
+    <Suspense fallback={<Loading />}>
+      <Content
+        userPromise={userPromise}
+        postsPromise={postsPromise}
+      />
+    </Suspense>
+  )
+}`}</pre>
+                    </div>
+                  </div>
+
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-semibold mb-2">
+                      3. Use useSuspenseQueries (TanStack)
+                    </h4>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      When using Suspense with TanStack Query, use
+                      useSuspenseQueries instead of multiple useSuspenseQuery
+                      calls to avoid waterfalls.
+                    </p>
+                    <div className="bg-muted p-3 rounded text-sm font-mono">
+                      <pre>{`// Waterfalls with multiple useSuspenseQuery
+const { data: user } = useSuspenseQuery(userQuery)
+const { data: posts } = useSuspenseQuery(postsQuery)
+
+// Parallel with useSuspenseQueries
+const [{ data: user }, { data: posts }] = useSuspenseQueries({
+  queries: [userQuery, postsQuery]
+})`}</pre>
+                    </div>
+                  </div>
+
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-semibold mb-2">
+                      4. Hoist Queries to Parent
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      Move queries from child components to a parent component
+                      where they can run in parallel. Pass results down as props
+                      or through context.
+                    </p>
+                  </div>
+
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-semibold mb-2">
+                      5. Restructure Your API
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      If you have dependent queries (query B needs result of
+                      query A), consider creating a combined endpoint that
+                      returns all needed data in one request.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Official Documentation Links */}
+            <Card className="bg-muted/30">
+              <CardHeader>
+                <CardTitle>Official Documentation on Waterfalls</CardTitle>
+                <CardDescription>
+                  Learn more from the official sources
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm">Next.js</h4>
+                    <div className="space-y-1">
+                      <a
+                        href="https://nextjs.org/docs/app/building-your-application/data-fetching/fetching#parallel-and-sequential-data-fetching"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-sm text-primary hover:underline"
+                      >
+                        → Parallel & Sequential Data Fetching
+                      </a>
+                      <a
+                        href="https://nextjs.org/learn/dashboard-app/fetching-data"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-sm text-primary hover:underline"
+                      >
+                        → Fetching Data Tutorial (Waterfalls)
+                      </a>
+                      <a
+                        href="https://nextjs.org/docs/app/building-your-application/data-fetching/patterns"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-sm text-primary hover:underline"
+                      >
+                        → Data Fetching Patterns & Best Practices
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm">TanStack Query</h4>
+                    <div className="space-y-1">
+                      <a
+                        href="https://tanstack.com/query/latest/docs/framework/react/guides/request-waterfalls"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-sm text-primary hover:underline"
+                      >
+                        → Performance & Request Waterfalls
+                      </a>
+                      <a
+                        href="https://tanstack.com/query/latest/docs/framework/react/guides/parallel-queries"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-sm text-primary hover:underline"
+                      >
+                        → Parallel Queries
+                      </a>
+                      <a
+                        href="https://tanstack.com/query/latest/docs/framework/react/guides/dependent-queries"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-sm text-primary hover:underline"
+                      >
+                        → Dependent Queries
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm">React</h4>
+                    <div className="space-y-1">
+                      <a
+                        href="https://react.dev/reference/react/Suspense"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-sm text-primary hover:underline"
+                      >
+                        → Suspense for Data Fetching
+                      </a>
+                      <a
+                        href="https://react.dev/reference/react/use"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-sm text-primary hover:underline"
+                      >
+                        → use Hook for Promises
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-sm">Additional Reading</h4>
+                    <div className="space-y-1">
+                      <a
+                        href="https://blog.sentry.io/fetch-waterfall-in-react/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-sm text-primary hover:underline"
+                      >
+                        → Fetch Waterfall in React (Sentry)
+                      </a>
+                      <a
+                        href="https://tkdodo.eu/blog/react-19-and-suspense-a-drama-in-3-acts"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-sm text-primary hover:underline"
+                      >
+                        → React 19 and Suspense (TkDodo)
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Approach Waterfall Comparison */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Waterfall Risk by Approach</CardTitle>
+                <CardDescription>
+                  How each approach handles parallel data fetching
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 font-semibold">Approach</th>
+                        <th className="text-left p-3 font-semibold">
+                          Waterfall Risk
+                        </th>
+                        <th className="text-left p-3 font-semibold">Why</th>
+                        <th className="text-left p-3 font-semibold">
+                          Mitigation
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b">
+                        <td className="p-3">1. SPA Client-Side</td>
+                        <td className="p-3">
+                          <Badge variant="destructive">High</Badge>
+                        </td>
+                        <td className="p-3 text-muted-foreground text-xs">
+                          Nested components fetch independently
+                        </td>
+                        <td className="p-3 text-xs">Hoist queries, use Promise.all</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="p-3">2. Hybrid SSR + Client</td>
+                        <td className="p-3">
+                          <Badge variant="secondary">Medium</Badge>
+                        </td>
+                        <td className="p-3 text-muted-foreground text-xs">
+                          Client parts can waterfall
+                        </td>
+                        <td className="p-3 text-xs">Prefetch in server component</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="p-3">3. Pure SSR</td>
+                        <td className="p-3">
+                          <Badge className="bg-green-500">Low</Badge>
+                        </td>
+                        <td className="p-3 text-muted-foreground text-xs">
+                          Server controls fetch timing
+                        </td>
+                        <td className="p-3 text-xs">Use Promise.all in server</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="p-3">4. TanStack Client</td>
+                        <td className="p-3">
+                          <Badge variant="destructive">High</Badge>
+                        </td>
+                        <td className="p-3 text-muted-foreground text-xs">
+                          Component-level fetching
+                        </td>
+                        <td className="p-3 text-xs">useQueries, prefetchQuery</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="p-3">5. TanStack Prefetch (Await)</td>
+                        <td className="p-3">
+                          <Badge className="bg-green-500">Low</Badge>
+                        </td>
+                        <td className="p-3 text-muted-foreground text-xs">
+                          Prefetch runs in parallel on server
+                        </td>
+                        <td className="p-3 text-xs">Already optimized</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="p-3">6. TanStack Prefetch (Stream)</td>
+                        <td className="p-3">
+                          <Badge className="bg-green-500">Low</Badge>
+                        </td>
+                        <td className="p-3 text-muted-foreground text-xs">
+                          Prefetch + streaming
+                        </td>
+                        <td className="p-3 text-xs">Already optimized</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </section>
 
         {/* Approach Comparison Table */}
@@ -1015,7 +1502,8 @@ revalidateTag('products')`}</pre>
                   cache persistence.
                 </p>
                 <div className="bg-muted p-4 rounded-md">
-                  <pre className="text-sm overflow-x-auto">{`const { data } = useQuery({
+                  <pre className="text-sm overflow-x-auto">{`// With Suspense (recommended for SSR)
+const { data } = useSuspenseQuery({
   queryKey: ['products'],
   queryFn: fetchProducts,
   staleTime: 5 * 1000,      // Fresh for 5 seconds

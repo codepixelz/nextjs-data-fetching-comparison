@@ -1,6 +1,6 @@
 'use client'
 
-import { useProducts } from '@/hooks/use-products'
+import { useSuspenseProducts } from '@/hooks/use-products'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { MetricsDisplay } from '@/components/metrics-display'
 export default function ProductsClient() {
   // useSuspenseQuery returns data that's NEVER undefined
   // Suspense boundary will handle loading state if query is pending
-  const { data: products, refetch, dataUpdatedAt } = useProducts()
+  const { data: products, refetch, dataUpdatedAt } = useSuspenseProducts()
 
   return (
     <div className="container mx-auto p-6">
@@ -254,12 +254,12 @@ export default function Page() {
 // components/products-client.tsx
 'use client'
 
-import { useProducts } from '@/hooks/use-products'
+import { useSuspenseProducts } from '@/hooks/use-products'
 
 export default function ProductsClient() {
   // useSuspenseQuery - data is never undefined
   // Suspense boundary handles loading state
-  const { data: products } = useProducts()
+  const { data: products } = useSuspenseProducts()
 
   return <ProductGrid products={products} />
 }
@@ -267,7 +267,7 @@ export default function ProductsClient() {
 // hooks/use-products.ts
 import { useSuspenseQuery } from '@tanstack/react-query'
 
-export function useProducts() {
+export function useSuspenseProducts() {
   return useSuspenseQuery({
     queryKey: ['products'],
     queryFn: fetchProducts,

@@ -1,11 +1,13 @@
 'use client'
 
+import { onTTFB, onFCP, onLCP } from 'web-vitals'
 import { ApproachType, MetricType, PerformanceMetric } from '@/types'
 
 /**
  * Performance Tracking Utilities
  *
- * Client-side performance measurement using Performance Observer API
+ * Uses Google's web-vitals library for Core Web Vitals (TTFB, FCP, LCP)
+ * and custom implementation for TTI, LOAD_TIME, and API_DURATION
  */
 
 export interface WebVitals {
@@ -16,127 +18,34 @@ export interface WebVitals {
 }
 
 /**
- * Measure Web Vitals using Performance Observer API
+ * Measure Web Vitals using Google's web-vitals library
  */
 export function measureWebVitals(callback: (metric: MetricType, value: number) => void) {
   // Only run in browser
   if (typeof window === 'undefined') return
 
-  // Time to First Byte (TTFB)
-  try {
-    const navigationEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
-    if (navigationEntry) {
-      const ttfb = navigationEntry.responseStart - navigationEntry.requestStart
-      if (ttfb > 0) {
-        callback('TTFB', ttfb)
-      }
-    }
-  } catch (e) {
-    console.warn('TTFB measurement failed:', e)
-  }
+  // Use web-vitals library for Core Web Vitals
+  // These are battle-tested implementations from Google
 
-  // First Contentful Paint (FCP) - check existing entries first
-  try {
-    const existingPaintEntries = performance.getEntriesByType('paint')
-    const fcpEntry = existingPaintEntries.find(entry => entry.name === 'first-contentful-paint')
-    if (fcpEntry) {
-      callback('FCP', fcpEntry.startTime)
-    } else if (typeof PerformanceObserver !== 'undefined') {
-      // Observe for future paint events
-      const paintObserver = new PerformanceObserver((list) => {
-        for (const entry of list.getEntries()) {
-          if (entry.name === 'first-contentful-paint') {
-            callback('FCP', entry.startTime)
-            paintObserver.disconnect()
-          }
-        }
-      })
-      paintObserver.observe({ entryTypes: ['paint'] })
-    }
-  } catch (e) {
-    console.warn('FCP measurement failed:', e)
-  }
+  // Time to First Byte (TTFB)
+  onTTFB((metric) => {
+    callback('TTFB', metric.value)
+  })
+
+  // First Contentful Paint (FCP)
+  onFCP((metric) => {
+    callback('FCP', metric.value)
+  })
 
   // Largest Contentful Paint (LCP)
-  try {
-    if (typeof PerformanceObserver !== 'undefined') {
-      let lcpValue: number | null = null
-
-      // Check existing buffered entries first
-      try {
-        const existingEntries = performance.getEntriesByType('largest-contentful-paint')
-        if (existingEntries.length > 0) {
-          const lastEntry = existingEntries[existingEntries.length - 1] as PerformanceEntry & { renderTime?: number; loadTime?: number }
-          lcpValue = lastEntry.renderTime || lastEntry.loadTime || lastEntry.startTime
-          if (lcpValue && lcpValue > 0) {
-            callback('LCP', lcpValue)
-          }
-        }
-      } catch {
-        // getEntriesByType may not support 'largest-contentful-paint' in all browsers
-      }
-
-      // Set up observer for future LCP updates
-      const lcpObserver = new PerformanceObserver((list) => {
-        const entries = list.getEntries()
-        for (const entry of entries) {
-          const lcpEntry = entry as PerformanceEntry & { renderTime?: number; loadTime?: number }
-          const lcp = lcpEntry.renderTime || lcpEntry.loadTime || lcpEntry.startTime
-          if (lcp && lcp > 0) {
-            lcpValue = lcp
-            callback('LCP', lcp)
-          }
-        }
-      })
-
-      try {
-        lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true })
-      } catch {
-        // Fallback for browsers that don't support the options
-        try {
-          lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] })
-        } catch {
-          // LCP not supported
-        }
-      }
-
-      // LCP is finalized when page becomes hidden or after load
-      const finalizeLCP = () => {
-        lcpObserver.disconnect()
-      }
-      document.addEventListener('visibilitychange', finalizeLCP, { once: true })
-      window.addEventListener('pagehide', finalizeLCP, { once: true })
-
-      // Report after load with a delay to capture final LCP
-      window.addEventListener('load', () => {
-        setTimeout(() => {
-          // If we still haven't reported, try one more time
-          if (lcpValue === null) {
-            try {
-              const entries = performance.getEntriesByType('largest-contentful-paint')
-              if (entries.length > 0) {
-                const lastEntry = entries[entries.length - 1] as PerformanceEntry & { renderTime?: number; loadTime?: number }
-                const lcp = lastEntry.renderTime || lastEntry.loadTime || lastEntry.startTime
-                if (lcp && lcp > 0) {
-                  callback('LCP', lcp)
-                }
-              }
-            } catch {
-              // Fallback: use a reasonable estimate based on load time
-            }
-          }
-          lcpObserver.disconnect()
-        }, 500)
-      })
-    }
-  } catch (e) {
-    console.warn('LCP measurement failed:', e)
-  }
+  onLCP((metric) => {
+    callback('LCP', metric.value)
+  })
 
   // Time to Interactive (TTI) - approximate using load event
+  // Note: TTI is deprecated from web-vitals, using custom implementation
   try {
     if (document.readyState === 'complete') {
-      // Page already loaded
       const navigationEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
       if (navigationEntry && navigationEntry.loadEventEnd > 0) {
         callback('TTI', navigationEntry.loadEventEnd)
@@ -145,7 +54,6 @@ export function measureWebVitals(callback: (metric: MetricType, value: number) =
       }
     } else {
       window.addEventListener('load', () => {
-        // Give a small delay to ensure JS execution is complete
         setTimeout(() => {
           callback('TTI', performance.now())
         }, 0)
@@ -178,36 +86,65 @@ export function measureWebVitals(callback: (metric: MetricType, value: number) =
     console.warn('LOAD_TIME measurement failed:', e)
   }
 
-  // API_DURATION - track fetch requests to /api/* endpoints using Resource Timing
-  // Reports immediately when API calls complete
+  // API_DURATION - track fetch requests to /api/* endpoints
+  // Reports immediately on first batch, then batches every 7 seconds
   try {
     if (typeof PerformanceObserver !== 'undefined') {
-      // Check existing resource entries first and report immediately
-      const existingResources = performance.getEntriesByType('resource') as PerformanceResourceTiming[]
-      const apiCalls = existingResources.filter(entry => entry.name.includes('/api/'))
-      if (apiCalls.length > 0) {
-        const avgDuration = apiCalls.reduce((sum, entry) => sum + entry.duration, 0) / apiCalls.length
-        callback('API_DURATION', avgDuration)
+      const API_WINDOW_MS = 7000
+      let apiDurations: number[] = []
+      let windowTimer: ReturnType<typeof setTimeout> | null = null
+      let isFirstReport = true
+
+      const reportApiDuration = () => {
+        if (apiDurations.length > 0) {
+          const avgDuration = apiDurations.reduce((sum, d) => sum + d, 0) / apiDurations.length
+          callback('API_DURATION', avgDuration)
+        }
+        apiDurations = []
+        windowTimer = null
       }
 
-      // Observe future resource loads and report each API call immediately
+      const addApiDuration = (duration: number) => {
+        apiDurations.push(duration)
+
+        // Report immediately on first batch
+        if (isFirstReport) {
+          isFirstReport = false
+          reportApiDuration()
+          return
+        }
+
+        // Start window timer for subsequent batches
+        if (!windowTimer) {
+          windowTimer = setTimeout(reportApiDuration, API_WINDOW_MS)
+        }
+      }
+
+      // Check existing resource entries first
+      const existingResources = performance.getEntriesByType('resource') as PerformanceResourceTiming[]
+      const apiCalls = existingResources.filter(entry => entry.name.includes('/api/'))
+      for (const entry of apiCalls) {
+        addApiDuration(entry.duration)
+      }
+
+      // Observe future resource loads
       const resourceObserver = new PerformanceObserver((list) => {
         const entries = list.getEntries() as PerformanceResourceTiming[]
         const apiEntries = entries.filter(entry => entry.name.includes('/api/'))
 
-        if (apiEntries.length > 0) {
-          // Report average of this batch immediately
-          const avgDuration = apiEntries.reduce((sum, entry) => sum + entry.duration, 0) / apiEntries.length
-          callback('API_DURATION', avgDuration)
+        for (const entry of apiEntries) {
+          addApiDuration(entry.duration)
         }
       })
       resourceObserver.observe({ type: 'resource', buffered: false })
 
-      // Disconnect after page load + delay to capture initial API calls
-      window.addEventListener('load', () => {
-        setTimeout(() => {
-          resourceObserver.disconnect()
-        }, 10000)
+      // Clean up on page unload
+      window.addEventListener('pagehide', () => {
+        if (windowTimer) {
+          clearTimeout(windowTimer)
+        }
+        reportApiDuration()
+        resourceObserver.disconnect()
       })
     }
   } catch (e) {
