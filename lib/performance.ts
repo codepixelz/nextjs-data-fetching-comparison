@@ -146,15 +146,37 @@ export function measureWebVitals(callback: (metric: MetricType, value: number) =
   }
 
   // API_DURATION - track fetch requests to /api/* endpoints using Resource Timing
+  // Uses a 7-second window to batch API calls and report average
   try {
     if (typeof PerformanceObserver !== 'undefined') {
+      const API_WINDOW_MS = 7000
+      let apiDurations: number[] = []
+      let windowTimer: ReturnType<typeof setTimeout> | null = null
+      let hasReported = false
+
+      const reportApiDuration = () => {
+        if (apiDurations.length > 0) {
+          const avgDuration = apiDurations.reduce((sum, d) => sum + d, 0) / apiDurations.length
+          callback('API_DURATION', avgDuration)
+          hasReported = true
+        }
+        apiDurations = []
+        windowTimer = null
+      }
+
+      const addApiDuration = (duration: number) => {
+        apiDurations.push(duration)
+        // Start window timer if not already running
+        if (!windowTimer) {
+          windowTimer = setTimeout(reportApiDuration, API_WINDOW_MS)
+        }
+      }
+
       // Check existing resource entries first
       const existingResources = performance.getEntriesByType('resource') as PerformanceResourceTiming[]
       const apiCalls = existingResources.filter(entry => entry.name.includes('/api/'))
-      if (apiCalls.length > 0) {
-        // Report average API duration
-        const totalDuration = apiCalls.reduce((sum, entry) => sum + entry.duration, 0)
-        callback('API_DURATION', totalDuration / apiCalls.length)
+      for (const entry of apiCalls) {
+        addApiDuration(entry.duration)
       }
 
       // Observe future resource loads
@@ -163,16 +185,23 @@ export function measureWebVitals(callback: (metric: MetricType, value: number) =
         const apiEntries = entries.filter(entry => entry.name.includes('/api/'))
 
         for (const entry of apiEntries) {
-          callback('API_DURATION', entry.duration)
+          addApiDuration(entry.duration)
         }
       })
       resourceObserver.observe({ type: 'resource', buffered: false })
 
-      // Disconnect after page load + a delay to capture initial API calls
+      // Disconnect after page load + window delay, and report any remaining
       window.addEventListener('load', () => {
         setTimeout(() => {
           resourceObserver.disconnect()
-        }, 5000)
+          // Report any remaining durations in the buffer
+          if (windowTimer) {
+            clearTimeout(windowTimer)
+          }
+          if (apiDurations.length > 0 || !hasReported) {
+            reportApiDuration()
+          }
+        }, API_WINDOW_MS)
       })
     }
   } catch (e) {
