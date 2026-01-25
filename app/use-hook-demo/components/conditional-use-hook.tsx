@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useState, useMemo } from 'react'
+import { use, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
@@ -12,8 +12,7 @@ interface User {
 
 /**
  * Promise cache to ensure stable promise references across renders.
- * This is necessary because React's cache() only deduplicates within
- * a single request/render tree, not across state changes.
+ * The cache returns the same promise instance for the same ID.
  */
 const promiseCache = new Map<string, Promise<User>>()
 
@@ -53,21 +52,17 @@ function fetchUser(id: string): Promise<User> {
  * Traditional hooks (useState, useEffect, etc.) CANNOT be called conditionally.
  * This is a major difference and enables new patterns.
  *
- * IMPORTANT: The promise must be stable across renders. We use useMemo
- * to ensure the same promise instance is used when userId hasn't changed.
+ * Note: With React Compiler (RC) in Next.js 16, manual memoization
+ * is not needed - the compiler handles it automatically.
  */
 export default function ConditionalUseHook() {
   const [shouldFetch, setShouldFetch] = useState(true)
   const [userId, setUserId] = useState<string>('1')
 
-  // Create the promise outside the conditional - this ensures stability
-  // The promise is memoized based on userId
-  const userPromise = useMemo(() => fetchUser(userId), [userId])
-
   // This is ONLY possible with the 'use' hook!
   // Other hooks cannot be called conditionally
-  // The promise is created above, but only READ conditionally
-  const user = shouldFetch ? use(userPromise) : null
+  // fetchUser returns cached promise for same ID (no useMemo needed with RC)
+  const user = shouldFetch ? use(fetchUser(userId)) : null
 
   return (
     <div className="space-y-4">
@@ -112,26 +107,30 @@ export default function ConditionalUseHook() {
         <ul className="list-disc list-inside mt-1 ml-2">
           <li>The 'use' hook is called CONDITIONALLY (inside a ternary operator)</li>
           <li>This is NOT possible with useState, useEffect, or other hooks</li>
-          <li>The promise is created with useMemo, but only READ when shouldFetch is true</li>
+          <li>The promise cache ensures stability - RC handles memoization</li>
           <li>Enables dynamic data fetching patterns</li>
           <li>Can be used in loops, if statements, or anywhere</li>
         </ul>
       </div>
 
       <div className="bg-muted p-3 rounded text-xs overflow-x-auto border">
-        <pre>{`function Component() {
+        <pre>{`// Promise cache ensures stable references
+const cache = new Map()
+
+function fetchUser(id) {
+  if (cache.has(id)) return cache.get(id)
+  const promise = fetch(\`/api/users/\${id}\`)
+    .then(res => res.json())
+  cache.set(id, promise)
+  return promise
+}
+
+function Component() {
   const [shouldFetch, setShouldFetch] = useState(true)
   const [userId, setUserId] = useState('1')
 
-  // ✅ Create promise outside the conditional (stable reference)
-  const userPromise = useMemo(() => fetchUser(userId), [userId])
-
-  // ✅ Read the promise conditionally with 'use'
-  const user = shouldFetch ? use(userPromise) : null
-
-  // ❌ DON'T create promise inside conditional:
-  // const user = shouldFetch ? use(fetchUser('1')) : null
-  // This creates a new promise each render → infinite Suspense!
+  // ✅ Cache ensures same promise - RC handles memoization
+  const user = shouldFetch ? use(fetchUser(userId)) : null
 
   return <div>{user?.name}</div>
 }`}</pre>
@@ -141,8 +140,8 @@ export default function ConditionalUseHook() {
         <strong>Important: Promise Stability</strong>
         <p className="mt-1">
           When using conditional 'use', the promise must be stable across renders.
-          Create the promise with useMemo or a cache, then read it conditionally.
-          Creating a new promise inside the conditional causes infinite Suspense loops.
+          Use a module-level cache to return the same promise instance for the same arguments.
+          With React Compiler (RC), manual useMemo is not needed.
         </p>
       </div>
 

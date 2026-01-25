@@ -1,30 +1,22 @@
-import { Product, ApiResponse } from '@/types'
+import { cache } from 'react'
+import { Product } from '@/types'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CACHE_TAGS } from '@/lib/cache-config'
+import { MOCK_PRODUCTS } from '@/lib/mock-data'
 
 /**
- * Fetch products with cache tags
+ * Get products using React's cache for request deduplication
  *
- * This demonstrates how to use Next.js Data Cache with tags
+ * React's cache() deduplicates calls within a single request/render.
+ * For server components, access data directly (not via API routes).
+ *
+ * Note: In a real app, this would be a database query.
  */
-async function fetchProducts(): Promise<Product[]> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-
-  const response = await fetch(`${baseUrl}/api/products`, {
-    next: {
-      tags: [CACHE_TAGS.PRODUCTS], // Tag this cache for revalidation
-      revalidate: 3600, // Optional: auto-revalidate after 1 hour
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch products')
-  }
-
-  const data: ApiResponse<Product[]> = await response.json()
-  return data.data
-}
+const getProducts = cache(async (): Promise<Product[]> => {
+  // Simulate async data fetching (in real app: database query)
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  return MOCK_PRODUCTS.slice(0, 10)
+})
 
 /**
  * Cached Product List (Server Component)
@@ -33,7 +25,7 @@ async function fetchProducts(): Promise<Product[]> {
  * When revalidateTag('products') is called, this data is invalidated.
  */
 export default async function CachedProductList() {
-  const products = await fetchProducts()
+  const products = await getProducts()
   const timestamp = new Date().toLocaleTimeString()
 
   return (
@@ -54,8 +46,8 @@ export default async function CachedProductList() {
               <strong>Server render time:</strong> {timestamp}
             </div>
             <div className="mt-2 text-xs">
-              This data is cached on the server. When you add a product or manually revalidate
-              the 'products' tag, this component will re-fetch fresh data on the next request.
+              This data uses React's <code>cache()</code> for request deduplication.
+              Multiple calls within the same request return the same result.
             </div>
           </div>
         </CardContent>
@@ -88,7 +80,7 @@ export default async function CachedProductList() {
         <CardContent className="text-xs space-y-2">
           <div className="p-2 bg-muted rounded">
             <strong>1. Initial Request:</strong>
-            <div className="ml-2 mt-1">Server fetches data, caches it with 'products' tag, renders component</div>
+            <div className="ml-2 mt-1">Server runs cached function, stores result with 'products' tag, renders component</div>
           </div>
           <div className="p-2 bg-muted rounded">
             <strong>2. Subsequent Requests:</strong>

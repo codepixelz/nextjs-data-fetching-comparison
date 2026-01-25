@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useMemo } from 'react'
+import { use } from 'react'
 import { Badge } from '@/components/ui/badge'
 
 interface User {
@@ -11,7 +11,7 @@ interface User {
 
 /**
  * Promise cache to ensure stable promise references across renders.
- * This works on the client where relative URLs are valid.
+ * The cache returns the same promise instance for the same ID.
  */
 const promiseCache = new Map<string, Promise<User>>()
 
@@ -46,13 +46,13 @@ function fetchUser(id: string): Promise<User> {
  *
  * This demonstrates the new 'use' hook for unwrapping promises.
  * Much simpler than the traditional approach!
+ *
+ * Note: With React Compiler (RC) in Next.js 16, manual memoization
+ * is not needed - the compiler handles it automatically.
  */
 export default function UseHookApproach() {
-  // Create the promise with useMemo to ensure stability across renders
-  const userPromise = useMemo(() => fetchUser('2'), [])
-
-  // use() unwraps the promise - component suspends while pending
-  const user = use(userPromise)
+  // fetchUser returns cached promise for same ID (no useMemo needed with RC)
+  const user = use(fetchUser('2'))
 
   return (
     <div className="space-y-4">
@@ -91,9 +91,8 @@ function fetchUser(id) {
 }
 
 function Component() {
-  // useMemo ensures stable promise reference
-  const userPromise = useMemo(() => fetchUser('2'), [])
-  const user = use(userPromise)
+  // Cache ensures same promise instance - RC handles memoization
+  const user = use(fetchUser('2'))
   return <div>{user.name}</div>
 }
 

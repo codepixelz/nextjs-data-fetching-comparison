@@ -265,18 +265,18 @@ export default function UseHookDemoPage() {
         <CardContent className="text-sm">
           <ul className="list-disc list-inside space-y-2">
             <li>
-              <strong>Promise creation:</strong> Create promises in server components or outside
-              render, not in the component that calls use()
+              <strong>Promise stability:</strong> Use a module-level cache to ensure the same
+              promise instance is returned for the same arguments
+            </li>
+            <li>
+              <strong>React Compiler:</strong> With Next.js 16 and React Compiler (RC), manual
+              useMemo is not needed - the compiler handles memoization automatically
             </li>
             <li>
               <strong>Suspense boundary:</strong> Always wrap components using use() with Suspense
             </li>
             <li>
               <strong>Error handling:</strong> Use Error Boundaries to catch promise rejections
-            </li>
-            <li>
-              <strong>Not a replacement:</strong> use() complements, not replaces, data fetching
-              libraries
             </li>
             <li>
               <strong>Server Components:</strong> Server components can use async/await directly,
