@@ -17,6 +17,9 @@ export interface ApproachMetrics {
   TTFB: MetricValue
   FCP: MetricValue
   LCP: MetricValue
+  CLS: MetricValue
+  INP: MetricValue
+  FID: MetricValue
   TTI: MetricValue
   LOAD_TIME: MetricValue
   API_DURATION: MetricValue
@@ -35,6 +38,9 @@ const initialApproachMetrics: ApproachMetrics = {
   TTFB: { ...initialMetricValue },
   FCP: { ...initialMetricValue },
   LCP: { ...initialMetricValue },
+  CLS: { ...initialMetricValue },
+  INP: { ...initialMetricValue },
+  FID: { ...initialMetricValue },
   TTI: { ...initialMetricValue },
   LOAD_TIME: { ...initialMetricValue },
   API_DURATION: { ...initialMetricValue },
@@ -72,7 +78,8 @@ export const useMetricsStore = create<MetricsState>()(
 
       updateMetric: (approach: ApproachType, metric: MetricType, value: number) => {
         set((state) => {
-          const currentMetrics = state.metrics[approach][metric]
+          // Handle case where metric might not exist in persisted data
+          const currentMetrics = state.metrics[approach]?.[metric] ?? { ...initialMetricValue }
           const newCount = currentMetrics.count + 1
           const newAvg = currentMetrics.avg !== null
             ? (currentMetrics.avg * currentMetrics.count + value) / newCount
@@ -84,6 +91,7 @@ export const useMetricsStore = create<MetricsState>()(
             metrics: {
               ...state.metrics,
               [approach]: {
+                ...initialApproachMetrics,
                 ...state.metrics[approach],
                 [metric]: {
                   current: value,
@@ -116,8 +124,8 @@ export const useMetricsStore = create<MetricsState>()(
         const state = get()
         return approaches.map(approach => ({
           approach,
-          value: state.metrics[approach][metric].avg,
-          count: state.metrics[approach][metric].count,
+          value: state.metrics[approach]?.[metric]?.avg ?? null,
+          count: state.metrics[approach]?.[metric]?.count ?? 0,
         }))
       },
     }),
@@ -128,14 +136,14 @@ export const useMetricsStore = create<MetricsState>()(
   )
 )
 
-// Metric descriptions for tooltips
+// Metric descriptions for tooltips - All Core Web Vitals + custom metrics
 export const metricDescriptions: Record<MetricType, { name: string; description: string; unit: string; good: string; moderate: string }> = {
   TTFB: {
     name: 'Time to First Byte',
     description: 'Measures the time from when the browser requests a page to when it receives the first byte of information from the server. Lower values indicate faster server response.',
     unit: 'ms',
-    good: '< 200ms',
-    moderate: '200-500ms',
+    good: '< 800ms',
+    moderate: '800-1800ms',
   },
   FCP: {
     name: 'First Contentful Paint',
@@ -146,10 +154,31 @@ export const metricDescriptions: Record<MetricType, { name: string; description:
   },
   LCP: {
     name: 'Largest Contentful Paint',
-    description: 'Measures when the largest content element (image, video, or text block) becomes visible. This is a Core Web Vital and key indicator of perceived load speed.',
+    description: 'Core Web Vital. Measures when the largest content element (image, video, or text block) becomes visible. Key indicator of perceived load speed.',
     unit: 'ms',
     good: '< 2.5s',
     moderate: '2.5-4s',
+  },
+  CLS: {
+    name: 'Cumulative Layout Shift',
+    description: 'Core Web Vital. Measures visual stability by quantifying unexpected layout shifts. Lower is better - a score of 0 means no shifts occurred.',
+    unit: '',
+    good: '< 0.1',
+    moderate: '0.1-0.25',
+  },
+  INP: {
+    name: 'Interaction to Next Paint',
+    description: 'Core Web Vital. Measures responsiveness by observing the latency of all click, tap, and keyboard interactions. Replaces FID as of March 2024.',
+    unit: 'ms',
+    good: '< 200ms',
+    moderate: '200-500ms',
+  },
+  FID: {
+    name: 'First Input Delay',
+    description: 'Legacy metric (replaced by INP). Measures the delay before the browser can respond to the first user interaction.',
+    unit: 'ms',
+    good: '< 100ms',
+    moderate: '100-300ms',
   },
   TTI: {
     name: 'Time to Interactive',
@@ -167,7 +196,7 @@ export const metricDescriptions: Record<MetricType, { name: string; description:
   },
   API_DURATION: {
     name: 'API Duration',
-    description: 'Measures the time taken for API requests to complete. Only recorded for approaches that make client-side API calls.',
+    description: 'Measures the average time for API requests to complete. Only recorded for approaches that make client-side API calls.',
     unit: 'ms',
     good: '< 300ms',
     moderate: '300-800ms',
@@ -176,9 +205,12 @@ export const metricDescriptions: Record<MetricType, { name: string; description:
 
 // Threshold values for color coding
 export const metricThresholds: Record<MetricType, { good: number; moderate: number }> = {
-  TTFB: { good: 200, moderate: 500 },
+  TTFB: { good: 800, moderate: 1800 },
   FCP: { good: 1800, moderate: 3000 },
   LCP: { good: 2500, moderate: 4000 },
+  CLS: { good: 0.1, moderate: 0.25 },
+  INP: { good: 200, moderate: 500 },
+  FID: { good: 100, moderate: 300 },
   TTI: { good: 3800, moderate: 7300 },
   LOAD_TIME: { good: 2000, moderate: 4000 },
   API_DURATION: { good: 300, moderate: 800 },

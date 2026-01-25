@@ -28,6 +28,8 @@ import {
   ExternalLink,
   Github,
   Activity,
+  Sparkles,
+  PlayCircle,
 } from 'lucide-react'
 import { APPROACH_CONFIG } from '@/lib/cache-config'
 
@@ -95,6 +97,40 @@ export function AppSidebar() {
                   <Link href="/docs">
                     <BookOpen className="w-4 h-4" />
                     <span>Documentation</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* React 19 Features */}
+        <SidebarGroup>
+          <SidebarGroupLabel>React 19</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === '/use-hook-demo'}>
+                  <Link href="/use-hook-demo">
+                    <Sparkles className="w-4 h-4" />
+                    <span>use() Hook</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Next.js Features */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Next.js</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === '/server-actions-demo'}>
+                  <Link href="/server-actions-demo">
+                    <PlayCircle className="w-4 h-4" />
+                    <span>Server Actions</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

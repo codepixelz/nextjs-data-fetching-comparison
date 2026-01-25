@@ -1,6 +1,6 @@
 'use client'
 
-import { use, cache } from 'react'
+import { use, useMemo } from 'react'
 import { Badge } from '@/components/ui/badge'
 
 interface User {
@@ -10,18 +10,36 @@ interface User {
 }
 
 /**
- * Fetch user data - cached to prevent refetching
+ * Promise cache to ensure stable promise references across renders.
+ * This works on the client where relative URLs are valid.
  */
-const fetchUser = cache(async (id: string) => {
-  const response = await fetch(`/api/users/${id}`)
+const promiseCache = new Map<string, Promise<User>>()
 
-  if (!response.ok) {
-    throw new Error('Failed to fetch user')
+function fetchUser(id: string): Promise<User> {
+  // Guard against SSR - relative URLs don't work on server
+  if (typeof window === 'undefined') {
+    return Promise.resolve({ id, name: '', email: '' })
   }
 
-  const data = await response.json()
-  return data.data as User
-})
+  const cached = promiseCache.get(id)
+  if (cached) return cached
+
+  const promise = fetch(`/api/users/${id}`)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error('Failed to fetch user')
+      }
+      return response.json()
+    })
+    .then((data) => data.data as User)
+    .catch((error) => {
+      promiseCache.delete(id)
+      throw error
+    })
+
+  promiseCache.set(id, promise)
+  return promise
+}
 
 /**
  * React 19 'use' Hook Approach
@@ -30,8 +48,8 @@ const fetchUser = cache(async (id: string) => {
  * Much simpler than the traditional approach!
  */
 export default function UseHookApproach() {
-  // Create the promise outside the component or use cache()
-  const userPromise = fetchUser('2')
+  // Create the promise with useMemo to ensure stability across renders
+  const userPromise = useMemo(() => fetchUser('2'), [])
 
   // use() unwraps the promise - component suspends while pending
   const user = use(userPromise)
@@ -61,15 +79,21 @@ export default function UseHookApproach() {
       </div>
 
       <div className="bg-muted p-3 rounded text-xs overflow-x-auto border">
-        <pre>{`const fetchUser = cache(async (id) => {
-  const res = await fetch(\`/api/users/\${id}\`)
-  return res.json()
-})
+        <pre>{`// Promise cache for stable references
+const cache = new Map()
+
+function fetchUser(id) {
+  if (cache.has(id)) return cache.get(id)
+  const promise = fetch(\`/api/users/\${id}\`)
+    .then(res => res.json())
+  cache.set(id, promise)
+  return promise
+}
 
 function Component() {
-  const userPromise = fetchUser('2')
+  // useMemo ensures stable promise reference
+  const userPromise = useMemo(() => fetchUser('2'), [])
   const user = use(userPromise)
-
   return <div>{user.name}</div>
 }
 

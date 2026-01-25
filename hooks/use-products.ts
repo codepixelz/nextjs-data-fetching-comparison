@@ -5,10 +5,22 @@ import { Product, ApiResponse } from '@/types'
 import { CACHE_CONFIG } from '@/lib/cache-config'
 
 /**
+ * Get base URL for API calls
+ * On server, relative URLs don't work - need absolute URL
+ */
+function getBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    return '' // Client-side: relative URLs work
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+}
+
+/**
  * Fetch all products
  */
 async function fetchProducts(delay?: number): Promise<Product[]> {
-  const url = delay ? `/api/products?delay=${delay}` : '/api/products'
+  const baseUrl = getBaseUrl()
+  const url = delay ? `${baseUrl}/api/products?delay=${delay}` : `${baseUrl}/api/products`
   const response = await fetch(url)
 
   if (!response.ok) {
@@ -23,7 +35,8 @@ async function fetchProducts(delay?: number): Promise<Product[]> {
  * Fetch a single product by ID
  */
 async function fetchProduct(id: string, delay?: number): Promise<Product> {
-  const url = delay ? `/api/products/${id}?delay=${delay}` : `/api/products/${id}`
+  const baseUrl = getBaseUrl()
+  const url = delay ? `${baseUrl}/api/products/${id}?delay=${delay}` : `${baseUrl}/api/products/${id}`
   const response = await fetch(url)
 
   if (!response.ok) {
@@ -38,7 +51,8 @@ async function fetchProduct(id: string, delay?: number): Promise<Product> {
  * Update a product
  */
 async function updateProduct(id: string, updates: Partial<Product>): Promise<Product> {
-  const response = await fetch(`/api/products/${id}`, {
+  const baseUrl = getBaseUrl()
+  const response = await fetch(`${baseUrl}/api/products/${id}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',

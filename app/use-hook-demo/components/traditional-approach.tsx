@@ -71,7 +71,7 @@ export default function TraditionalApproach() {
 
   return (
     <div className="space-y-4">
-      <div className="p-4 bg-gray-50 rounded-lg">
+      <div className="p-4 bg-muted rounded-lg border">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold">{user?.name}</h3>
           <Badge variant="outline">Traditional</Badge>
